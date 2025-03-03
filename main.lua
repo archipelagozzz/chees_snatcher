@@ -21,7 +21,6 @@ function safe_decompile(_path, max_tries, tries)
     end
 end
 
--- [[
 local function get_path_as_string(object)
     local _return = {}
     local current_object = object
@@ -42,9 +41,7 @@ function find_descendant_of_class(obj, classes_name)
         end
     end
 end
---]]
 
--- [[
 function save_script(sc, _folder_path)
     if not sc:IsA("ModuleScript") and not sc:IsA("LocalScript") then 
         writefile(`{_folder_path}/{sc.Name} | sc.ClassName`, "")
@@ -71,9 +68,7 @@ function save_script(sc, _folder_path)
         print(`{sc.Name} ranaway cuh`)
     end
 end
---]]
 
--- [[
 function save_container_scripts(container, descendant, current_path)
     if not container then warn("Snatching target has to be referenced.") return end
     current_path = current_path or {}
@@ -99,6 +94,5 @@ function save_container_scripts(container, descendant, current_path)
         end
     end
 end
---]]
 
 return save_container_scripts
