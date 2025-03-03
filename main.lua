@@ -75,6 +75,7 @@ end
 
 -- [[
 function save_container_scripts(container, descendant, current_path)
+    if not container then warn("Snatching target has to be referenced.") return end
     current_path = current_path or {}
     
     local _path = `chees_snatcher/{game.Name}/{table.concat(current_path, "/")}`
