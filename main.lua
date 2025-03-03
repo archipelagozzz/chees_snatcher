@@ -95,4 +95,6 @@ function save_container_scripts(container, descendant, current_path)
     end
 end
 
-return save_container_scripts
+local _path = getgenv()._extract_path
+local _descendants = getgenv()._extract_descendants
+save_container_scripts(_path, _descendants)
