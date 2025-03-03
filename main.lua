@@ -11,7 +11,7 @@ function safe_decompile(_path, max_tries, tries)
         end)
         
         local is_failed = failed_decompile(value)
-        print(`CURRENT STATE : {is_failed} | DECOMPILING {_path.Name} TRIES TAKEN : {tries}`)
+        if getgenv()._extract_debug then print(`CURRENT STATE : {is_failed} | DECOMPILING {_path.Name} TRIES TAKEN : {tries}`) end
     
         if is_failed then 
             task.wait(6)
@@ -52,19 +52,21 @@ function save_script(sc, _folder_path)
     
     local _path = table.concat(get_path_as_string(sc), ".")
     local _name = `{tries or "FAILED"} {sc.Name} {sc.ClassName}.txt`
-    
-    print("------------ SNATCHING -----------------")
-    print(`NAME : {_name}`)
-    print(`PATH : {_path}`)
-    print("------------ SNATCHING -----------------")
+
+    if getgenv()._extract_debug then 
+        print("------------ SNATCHING -----------------")
+        print(`NAME : {_name}`)
+        print(`PATH : {_path}`)
+        print("------------ SNATCHING -----------------")
+    end
     
     local state, _ = pcall(function()
         return writefile(`{_folder_path}/{_name}`, _decompiled)
     end)
     
-    if state then
+    if state and getgenv()._extract_debug then
         print(`snatched {sc.Name} at {os.clock()-start}s in {tries} tries`)
-    else
+    elseif getgenv()._extract_debug then
         print(`{sc.Name} ranaway cuh`)
     end
 end
@@ -83,11 +85,13 @@ function save_container_scripts(container, descendant, current_path)
             table.remove(current_path, #current_path)
         end
 
-        if obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-            save_script(obj, _path)
-            task.wait()
+        for _, banned_ancestor in getgenv()._extract_blacklist_ancestor do
+            if (obj:IsA("LocalScript") or obj:IsA("ModuleScript")) and obj:FindFirstAncestor(banned_ancestor) then
+                save_script(obj, _path)
+                task.wait()
+            end
         end
-        
+
         if descendant and find_descendant_of_class(obj, {"ModuleScript", "LocalScript"}) then
             table.insert(current_path, `{obj.Name} {obj.ClassName}`)
             save_container_scripts(obj, true, current_path)
@@ -97,4 +101,6 @@ end
 
 local _path = getgenv()._extract_path
 local _descendants = getgenv()._extract_descendants
+local _debug = getgenv()._extract_debug
+local _blacklist = getgenv()._extract_blacklist_ancestor
 save_container_scripts(_path, _descendants)
