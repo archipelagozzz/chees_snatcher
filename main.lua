@@ -99,4 +99,5 @@ function save_container_scripts(container, descendant, current_path)
     end
 end
 --]]
-save_container_scripts(game.StarterPlayer.Modules, true)
+
+return save_container_scripts
