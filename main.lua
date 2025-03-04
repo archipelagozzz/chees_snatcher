@@ -1,3 +1,5 @@
+local _high_snatch_try = nil
+
 function remove_symbols(text)
     local symbols = [[/\*?:<>|"]]
     local cleanedText = text:gsub("[" .. symbols .. "]", "")
@@ -20,7 +22,7 @@ function safe_decompile(_path, max_tries, tries)
         if getgenv()._extract_debug then print(`CURRENT STATE : {is_failed} | DECOMPILING {_path.Name} TRIES TAKEN : {tries}`) end
     
         if is_failed then 
-            task.wait(6)
+            task.wait()
             continue
         end
         return not is_failed, tries, value
@@ -70,7 +72,13 @@ function save_script(sc, _folder_path)
     local state, _ = pcall(function()
         return writefile(`{_folder_path}/{_name}`, _decompiled)
     end)
-    
+
+    if not _high_snatch_try or tries >= _high_snatch_try[3] then
+        _high_snatch_try[1] = `{sc.Name} {sc.ClassName}`
+        _high_snatch_try[2] = sc:GetFullName()
+        _high_snatch_try[3] = tries
+        _high_snatch_try[4] = _folder_path
+    end
     if state and getgenv()._extract_debug then
         print(`snatched {sc.Name} at {os.clock()-start}s in {tries} tries`)
     elseif getgenv()._extract_debug then
@@ -111,13 +119,15 @@ function save_container_scripts(container, descendant, origin_container)
         print(state, err)
     end
 
+    local banned_ancestors = getgenv()._extract_blacklist_ancestor or {}
+    local classes_only = getgenv()._extract_only_class or {}
     for _, obj in container:GetChildren() do
         if getgenv()._extract_stop then break end
         local state_break = false
 
-        for _, banned_ancestor in getgenv()._extract_blacklist_ancestor do
+        for _, banned_ancestor in banned_ancestors do
             if not obj:FindFirstAncestor(banned_ancestor) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
-                if #(getgenv()._extract_only_class or {}) > 0 and not table.find(getgenv()._extract_only_class or {}, obj.ClassName) then continue end
+                if #classes_only > 0 and not table.find(classes_only, obj.ClassName) then continue end
                 save_script(obj, _path)
                 task.wait()
             else
@@ -125,10 +135,17 @@ function save_container_scripts(container, descendant, origin_container)
             end
         end
    
-        if not state_break and descendant and find_descendant_of_class(obj, getgenv()._extract_only_class) then -- 
+        if not state_break and descendant then -- 
+            if #classes_only > 0 and (not find_descendant_of_class(obj, getgenv()._extract_only_class) or #obj:GetChildren() <= 0) then continue end
             save_container_scripts(obj, getgenv()._extract_descendants, origin_container)
         end
     end
+
+    if container ~= origin_cointainer then return end
+    print("----- SNATCHED TARGET -----")
+    print(`done snatched ts target cuh, they from da {origin_container.Parent.Name} and they is {origin_container.Name}`)
+    print((_high_snatch_try and _high_snatch_try[3] or 0) > 5 and `icl {_high_snatch_try[1]} lowkey the hardest snatched target ive done br ngl, they live on da {_high_snatch_try[2]}, llike i had to snatch {_high_snatch_try[3]} times bro??? i stored dem on da {_high_snatch_try[4]} street yo` or `ts a easy target bro, no challenge bro what`)
+    print("----- SNATCHED TARGET -----")
 end
 
 local _path = getgenv()._extract_path
