@@ -74,10 +74,9 @@ end
 function save_container_scripts(container, descendant, current_path)
     if getgenv()._extract_stop then print("Snatching stopped") end
     if not container then warn("Snatching target has to be referenced.") return end
-    current_path = current_path or {container.Name}
+    current_path = current_path or {}
     
     local _path = `chees_snatcher/{game.Name}/{table.concat(current_path, "/")}`
-    makefolder(`chees_snatcher/{game.Name}`)
     makefolder(_path)
    
     for _, obj in container:GetChildren() do
