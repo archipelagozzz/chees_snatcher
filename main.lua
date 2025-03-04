@@ -78,37 +78,55 @@ function save_script(sc, _folder_path)
     end
 end
 
-function save_container_scripts(container, descendant, current_path)
+function get_path_by_origin_container(origin_container, object)
+    local _path = {}
+    local current_object = object
+    repeat
+        table.insert(_path, 1, current_object)
+        if current_object == origin_container or not current_object.Parent then break end
+        current_object = current_object.Parent
+        task.wait()
+    until not current_object.Parent
+
+    return _path
+end
+
+function save_container_scripts(container, descendant, origin_container)
     if getgenv()._extract_stop then print("Snatching stopped") end
     if not container then warn("Snatching target has to be referenced.") return end
-    current_path = current_path or {remove_symbols(`{container.Name} {container.ClassName}`)}
+    origin_container = origin_container or container
     
-    local _path = `chees_snatcher/{remove_symbols(game.Name)}/{table.concat(current_path, "/")}`
+    local _array_path = get_path_by_origin_container(origin_container, container, origin_container)
+    local _string_array_path = {}
+    for index, value in _array_path do
+        _string_array_path[index] = remove_symbols(`{value.Name} {value.ClassName}`)
+    end
+    
+    local _path = `chees_snatcher/{remove_symbols(game.Name)}/{table.concat(_string_array_path, "/")}`
     local state, err = pcall(function()
         return makefolder(_path)
     end)
-    if getgenv()._extract_debug then 
+    if not getgenv()._extract_debug then 
         print(_path)
-        print(a, b)
+        print(state, err)
     end
-    
+
     for _, obj in container:GetChildren() do
         if getgenv()._extract_stop then break end
-        for i = 1, #current_path do
-            if current_path[#current_path] == remove_symbols(`{container.Name} {container.ClassName}`) then break end
-            table.remove(current_path, #current_path)
-        end
+        local state_break = false
 
         for _, banned_ancestor in getgenv()._extract_blacklist_ancestor do
             if not obj:FindFirstAncestor(banned_ancestor) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
+                if #(getgenv()._extract_only_class or {}) > 0 and not table.find(getgenv()._extract_only_class or {}, obj.ClassName) then continue end
                 save_script(obj, _path)
                 task.wait()
+            else
+                state_break = true
             end
         end
-
-        if descendant and #obj:GetChildren() > 0 then -- find_descendant_of_class(obj, {"ModuleScript", "LocalScript"})
-            table.insert(current_path, remove_symbols(`{obj.Name} {obj.ClassName}`))
-            save_container_scripts(obj, true, current_path)
+   
+        if not state_break and descendant and find_descendant_of_class(obj, getgenv()._extract_only_class) then -- 
+            save_container_scripts(obj, getgenv()._extract_descendants, origin_container)
         end
     end
 end
@@ -117,5 +135,6 @@ local _path = getgenv()._extract_path
 local _descendants = getgenv()._extract_descendants
 local _debug = getgenv()._extract_debug
 local _blacklist = getgenv()._extract_blacklist_ancestor
+local _classes = getgenv()._extract_only_class
 local _force_stop = getgenv()._extract_stop
 save_container_scripts(_path, _descendants)
