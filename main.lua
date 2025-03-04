@@ -1,3 +1,9 @@
+function remove_symbols(text)
+    local symbols = [[/\*?:<>|"]]
+    local cleanedText = text:gsub("[" .. symbols .. "]", "")
+    return cleanedText
+end
+
 function failed_decompile(_decompiled)
     return string.find(_decompiled or "", "-- Failed to decompile") and true or false
 end
@@ -44,14 +50,15 @@ end
 
 function save_script(sc, _folder_path)
     if not sc:IsA("ModuleScript") and not sc:IsA("LocalScript") then 
-        writefile(`{_folder_path}/{sc.Name} | sc.ClassName`, "")
+        if sc:IsA("Folder") then return end
+        writefile(`{_folder_path}/{remove_symbols(`{sc.Name} {sc.ClassName}`)}`, "")
         return
     end
     local start = os.clock()
     local success_process, tries, _decompiled = safe_decompile(sc)
     
     local _path = table.concat(get_path_as_string(sc), ".")
-    local _name = `{tries or "FAILED"} {sc.Name} {sc.ClassName}.txt`
+    local _name = remove_symbols(`{tries or "FAILED"} {sc.Name} {sc.ClassName}.txt`)
 
     if getgenv()._extract_debug then 
         print("------------ SNATCHING -----------------")
@@ -74,15 +81,21 @@ end
 function save_container_scripts(container, descendant, current_path)
     if getgenv()._extract_stop then print("Snatching stopped") end
     if not container then warn("Snatching target has to be referenced.") return end
-    current_path = current_path or {}
+    current_path = current_path or {remove_symbols(`{container.Name} {container.ClassName}`)}
     
-    local _path = `chees_snatcher/{game.Name}/{table.concat(current_path, "/")}`
-    makefolder(_path)
-   
+    local _path = `chees_snatcher/{remove_symbols(game.Name)}/{table.concat(current_path, "/")}`
+    local state, err = pcall(function()
+        return makefolder(_path)
+    end)
+    if getgenv()._extract_debug then 
+        print(_path)
+        print(a, b)
+    end
+    
     for _, obj in container:GetChildren() do
         if getgenv()._extract_stop then break end
         for i = 1, #current_path do
-            if current_path[#current_path] == `{container.Name} {container.ClassName}` then break end
+            if current_path[#current_path] == remove_symbols(`{container.Name} {container.ClassName}`) then break end
             table.remove(current_path, #current_path)
         end
 
@@ -94,7 +107,7 @@ function save_container_scripts(container, descendant, current_path)
         end
 
         if descendant and #obj:GetChildren() > 0 then -- find_descendant_of_class(obj, {"ModuleScript", "LocalScript"})
-            table.insert(current_path, `{obj.Name} {obj.ClassName}`)
+            table.insert(current_path, remove_symbols(`{obj.Name} {obj.ClassName}`))
             save_container_scripts(obj, true, current_path)
         end
     end
