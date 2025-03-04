@@ -88,13 +88,13 @@ function save_container_scripts(container, descendant, current_path)
         end
 
         for _, banned_ancestor in getgenv()._extract_blacklist_ancestor do
-            if (obj:IsA("LocalScript") or obj:IsA("ModuleScript")) and obj:FindFirstAncestor(banned_ancestor) then
+            if (not obj:FindFirstAncestor(banned_ancestor) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
                 save_script(obj, _path)
                 task.wait()
             end
         end
 
-        if descendant and find_descendant_of_class(obj, {"ModuleScript", "LocalScript"}) then
+        if descendant and #obj:GetChildren() > 0 then -- find_descendant_of_class(obj, {"ModuleScript", "LocalScript"})
             table.insert(current_path, `{obj.Name} {obj.ClassName}`)
             save_container_scripts(obj, true, current_path)
         end
