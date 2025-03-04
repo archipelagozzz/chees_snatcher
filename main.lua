@@ -72,6 +72,7 @@ function save_script(sc, _folder_path)
 end
 
 function save_container_scripts(container, descendant, current_path)
+    if getgenv()._extract_stop then print("Snatching stopped") end
     if not container then warn("Snatching target has to be referenced.") return end
     current_path = current_path or {}
     
@@ -80,6 +81,7 @@ function save_container_scripts(container, descendant, current_path)
     makefolder(_path)
    
     for _, obj in container:GetChildren() do
+        if getgenv()._extract_stop then break end
         for i = 1, #current_path do
             if current_path[#current_path] == `{container.Name} {container.ClassName}` then break end
             table.remove(current_path, #current_path)
@@ -103,4 +105,5 @@ local _path = getgenv()._extract_path
 local _descendants = getgenv()._extract_descendants
 local _debug = getgenv()._extract_debug
 local _blacklist = getgenv()._extract_blacklist_ancestor
+local _force_stop = getgenv()._extract_stop
 save_container_scripts(_path, _descendants)
