@@ -87,7 +87,7 @@ function save_container_scripts(container, descendant, current_path)
         end
 
         for _, banned_ancestor in getgenv()._extract_blacklist_ancestor do
-            if (not obj:FindFirstAncestor(banned_ancestor) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
+            if not obj:FindFirstAncestor(banned_ancestor) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
                 save_script(obj, _path)
                 task.wait()
             end
