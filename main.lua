@@ -1,4 +1,4 @@
-local _high_snatch_try = nil
+local _high_snatch_try = {}
 
 function remove_symbols(text)
     local symbols = [[/\*?:<>|"]]
@@ -74,6 +74,7 @@ function save_script(sc, _folder_path)
     end)
 
     if not _high_snatch_try or tries >= (_high_snatch_try[3] or 0) then
+        _high_snatch_try = _high_snatch_try or {}
         _high_snatch_try[1] = `{sc.Name} {sc.ClassName}`
         _high_snatch_try[2] = sc:GetFullName()
         _high_snatch_try[3] = tries
