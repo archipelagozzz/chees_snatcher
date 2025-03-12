@@ -145,7 +145,7 @@ function save_container_scripts(container, descendant, origin_container)
     if container ~= origin_cointainer then return end
     print("----- SNATCHED TARGET -----")
     print(`done snatched ts target cuh, they from da {origin_container.Parent.Name} and they is {origin_container.Name}`)
-    print((_high_snatch_try and _high_snatch_try[3] or 0) > 5 and `icl {_high_snatch_try[1]} lowkey the hardest snatched target ive done br ngl, they live on da {_high_snatch_try[2]}, llike i had to snatch {_high_snatch_try[3]} times bro??? i stored dem on da {_high_snatch_try[4]} street yo` or `ts a easy target bro, no challenge bro what`)
+    print((_high_snatch_try and _high_snatch_try[3] or 0) > 5 and `icl {_high_snatch_try[1]} lowkey the hardest snatched target ive done br ngl, they live on da {_high_snatch_try[2]}, like i had to snatch {_high_snatch_try[3]} times bro??? i stored dem on da {_high_snatch_try[4]} street yo` or `ts a easy target bro, no challenge bro what`)
     print("----- SNATCHED TARGET -----")
 end
 
