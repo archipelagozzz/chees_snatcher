@@ -1,4 +1,4 @@
-local _high_snatch_try = nil
+local _high_snatch_try = {}
 
 function remove_symbols(text)
     local symbols = [[/\*?:<>|"]]
