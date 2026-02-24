@@ -121,7 +121,7 @@ function save_container_scripts(container, descendant, origin_container)
         local state_break = false
 
         for _, banned_ancestor in banned_ancestors do
-            if obj:FindFirstAncestor(banned_ancestor) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
+            if obj:FindFirstAncestor(banned_ancestor.Name) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
                 state_break = true
             end
         end
