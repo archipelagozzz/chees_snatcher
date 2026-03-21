@@ -40,9 +40,13 @@ function SafeDecompile(DecompileScript : LocalScript | ModuleScript, MaxTries : 
 
 		if IsFailed then 
 			task.wait()
+			
+			if Tries >= MaxTries then 
+				return false, nil
+			end
 			continue
 		end
-		
+
 		if Tries > Cache.HighestDecompileTries then
 			Cache.HighestDecompileTries = Tries
 			Cache.HighestDecomplieScript = DecompileScript:GetFullName()
@@ -87,16 +91,28 @@ function SaveObject(Object : Instance, CurrentPath : Instance, Folder : boolean,
 			print(`PATH : {Object:GetFullName()}`)
 			print("------------ SNATCHED -----------------")
 		end
+		
+		local SavingState = true
+		
+		if Tries then
+			local State, _ = pcall(function()
+				return writefile(`{CurrentPath}/{DecompiledName}`, Decompiled)
+			end)
 
-		local State, _ = pcall(function()
-			return writefile(`{CurrentPath}/{DecompiledName}`, Decompiled)
-		end)
-
-		if State and getgenv().ExtractDebug then
-			print(`snatched {Object.Name} at {os.clock() - Stamp}s in {Tries} tries`)
-		elseif not State or getgenv().ExtractDebug then
-			print(`{Object.Name} ranaway cuh`)
+			if State and getgenv().ExtractDebug then
+				print(`snatched {Object.Name} at {os.clock() - Stamp}s in {Tries} tries`)
+			elseif not State then
+				if getgenv().ExtractDebug then
+					print(`{Object.Name} ranaway cuh`)
+				end
+				
+				SavingState = false
+			end
+		else
+			SavingState = false
 		end
+	
+		return SavingState
 	else
 		writefile(`{CurrentPath}/{Object.Name} {Object.ClassName}`, "")
 	end
@@ -106,6 +122,8 @@ local OriginalContainer
 
 local OngoingSnatching = 0
 local CompletedSnatch = 0
+
+local ToBeSnatched = 0
 
 function SaveContainerObjects(Container : Instance, PreviousPath : string)
 	if getgenv().ExtractForceStop then
@@ -134,28 +152,38 @@ function SaveContainerObjects(Container : Instance, PreviousPath : string)
 		return
 	end
 	
+	for _, Object in Container:GetChildren() do
+		if Object:IsA("LocalScript") or Object:IsA("ModuleScript") then
+			ToBeSnatched += 1
+		end
+	end
+
 	local StartStamp = os.clock()
 	local IsOriginalContainer = OriginalContainer == nil
 	OriginalContainer = OriginalContainer or Container
 
 	local CurrentPath = PreviousPath or `{SavePath}`
 	CurrentPath = SaveObject(Container, CurrentPath, true, IsOriginalContainer and RemoveSymbols(Container:GetFullName()))
-	
+
 	if IsOriginalContainer then
 		print("----- --- -- Cheeus Snatcher -- --- -----")
 		print("Cheeus is eyeing at {Container.Name}!")
 		print(`Beware {Container:GetFullName()}, Cheeus is coming!`)
 		print("----- --- -- Cheeus Snatcher -- --- -----")
 	end
-	
+
 	for _, Object in Container:GetChildren() do
 		if getgenv().ExtractForceStop then
 			break
 		end
-
-		SaveObject(Object, CurrentPath)
+		
 		if Object:IsA("ModuleScript") or Object:IsA("LocalScript") then
 			OngoingSnatching += 1
+		end
+		
+		local State = SaveObject(Object, CurrentPath)
+		
+		if State and (Object:IsA("ModuleScript") or Object:IsA("LocalScript")) then
 			CompletedSnatch += 1
 		end
 
@@ -167,10 +195,10 @@ function SaveContainerObjects(Container : Instance, PreviousPath : string)
 
 		task.wait()
 	end
-	
+
 	if IsOriginalContainer then
 		local Stamp = os.clock()
-		
+
 		while task.wait() do
 			if os.clock() - Stamp >= 60 then
 				print("----- --- -- Cheeus Snatcher -- --- -----")
@@ -178,19 +206,20 @@ function SaveContainerObjects(Container : Instance, PreviousPath : string)
 				print("I'm leavin bruh, i'm not gonna wait forever")
 				print("Just the tracker tho, not the real snatch, I'm still keepin my eyes on them")
 				print("----- --- -- Cheeus Snatcher -- --- -----")
-				
+
 				break
 			end
-			
-			if CompletedSnatch >= OngoingSnatching then
+
+			if OngoingSnatching >= ToBeSnatched then
 				print("----- --- -- Cheeus Snatcher -- --- -----")
-				print("Cheeus succesfully snatched the target!")
+				print("Cheeus done snatched the target!")
 				print(`Snatched {Container.Name} with full Id of {Container:GetFullName()}`)
-				print(`Stored in {CurrentPath}`)
+				print(`I stored them in {CurrentPath}`)
 				print(`{Cache.HighestDecompileTries <= 1 and "I see no challenge on snatching these targets, the Highest Tries is" or "Got some problems while snatching these targets, I got some with"} {Cache.HighestDecompileTries} Tries which is when i tryna to snatch {Cache.HighestDecomplieScript}`)
 				print(`I only took {os.clock() - StartStamp}s to snatch these targets`)
+				print(`Snatched {CompletedSnatch} out of {ToBeSnatched} targets`)
 				print("----- --- -- Cheeus Snatcher -- --- -----")
-				
+
 				break
 			end
 		end
