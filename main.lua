@@ -1,155 +1,205 @@
-local _high_snatch_try = {}
+local MarketplaceService = game:GetService("MarketplaceService")
 
-function remove_symbols(text)
-    local symbols = [[/\*?:<>|"]]
-    local cleanedText = text:gsub("[" .. symbols .. "]", "")
-    return cleanedText
+local SavePath = `CheeusSnatcher/Placeholder`
+
+local GameNameState, GameName = pcall(function() 
+	return MarketplaceService:GetProductInfoAsync(game.PlaceId).Name 
+end)
+
+if GameNameState then
+	SavePath = `CheeusSnatcher/{GameName}`
 end
 
-function failed_decompile(_decompiled)
-    return string.find(_decompiled or "", "-- Failed to decompile") and true or false
+local Cache = {
+	HighestDecompileTries = 0,
+}
+
+function RemoveSymbols(String : string)
+	local Symbols = [[/\*?:<>|"]]
+	local NewString = String:gsub("[" .. Symbols .. "]", "")
+
+	return NewString
 end
 
-function safe_decompile(_path, max_tries, tries)
-    max_tries = max_tries or 128
-    
-    for tries = 1, max_tries do
-        local state, value = pcall(function()
-            return decompile(_path)
-        end)
-        
-        local is_failed = failed_decompile(value)
-        if getgenv()._extract_debug then print(`CURRENT STATE : {is_failed} | DECOMPILING {_path.Name} TRIES TAKEN : {tries}`) end
-    
-        if is_failed then 
-            task.wait()
-            continue
-        end
-        return not is_failed, tries, value
-    end
+function IsDecompileFailed(Decompiled : string)
+	return string.find(Decompiled or "", "-- Failed to decompile")
 end
 
-local function get_path_as_string(object)
-    local _return = {}
-    local current_object = object
- 
-    repeat
-        table.insert(_return, 1, current_object.Name)
-        current_object = current_object.Parent
-    until not current_object or not current_object.Parent
-    
-    return _return
-end
+function SafeDecompile(DecompileScript : LocalScript | ModuleScript, MaxTries : number)
+	MaxTries = MaxTries or 128
 
-function find_descendant_of_class(obj, classes_name)
-    for _, _obj in obj:GetDescendants() do
-        for _, class_name in classes_name do
-            if _obj:IsA(class_name) then return _obj end
-        end
-    end
-end
-
-function save_script(sc, _folder_path)
-    if sc:IsA("ModuleScript") or sc:IsA("LocalScript") then 
-		local start = os.clock()
-		local success_process, tries, _decompiled = safe_decompile(sc)
-		
-		local _path = table.concat(get_path_as_string(sc), ".")
-		local _name = remove_symbols(`{tries or "FAILED"} {sc.Name} {sc.ClassName}.txt`)
-
-		if getgenv()._extract_debug then 
-			print("------------ SNATCHING -----------------")
-			print(`NAME : {_name}`)
-			print(`PATH : {_path}`)
-			print("------------ SNATCHING -----------------")
-		end
-		
-		local state, _ = pcall(function()
-			return writefile(`{_folder_path}/{_name}`, _decompiled)
+	for Tries = 1, MaxTries do
+		local State, Decompiled = pcall(function()
+			return decompile(DecompileScript)
 		end)
 
-		if state and getgenv()._extract_debug then
-			print(`snatched {sc.Name} at {os.clock()-start}s in {tries} tries`)
-		elseif getgenv()._extract_debug then
-			print(`{sc.Name} ranaway cuh`)
+		local IsFailed = IsDecompileFailed(Decompiled)
+		if getgenv()._extract_debug then 
+			print(`CURRENT STATE : {IsFailed} | DECOMPILING {DecompileScript.Name} TRIES TAKEN : {Tries}`) 
 		end
-	else
-		local _path = table.concat(get_path_as_string(sc), ".")
-		local _name = remove_symbols(`[{sc.ClassName}] {sc.Name}`)
 
-		writefile(`{_folder_path}/{_name}`, "")
-    end
-end
+		if IsFailed then 
+			task.wait()
+			continue
+		end
+		
+		if Tries > Cache.HighestDecompileTries then
+			Cache.HighestDecompileTries = Tries
+			Cache.HighestDecomplieScript = DecompileScript:GetFullName()
+		end
 
-function get_path_by_origin_container(origin_container, object)
-    local _path = {}
-    local current_object = object
-    repeat
-        table.insert(_path, 1, current_object)
-        if current_object == origin_container or not current_object.Parent then break end
-        current_object = current_object.Parent
-    until not current_object.Parent
-
-    return _path
-end
-
-local origin_container
-function save_container_scripts(container, descendant, origin_container)
-    if getgenv()._extract_stop then print("Snatching stopped") end
-    if not container then warn("Snatching target has to be referenced.") return end
-
-	origin_container = origin_container or container
-
-    local _array_path = get_path_by_origin_container(origin_container, container, origin_container)
-    local _string_array_path = {}
-    for index, value in _array_path do
-        _string_array_path[index] = remove_symbols(`{value.Name} {value.ClassName}`)
-    end
-    
-    local _path = `chees_snatcher/{remove_symbols(game.Name)}/{table.concat(_string_array_path, "/")}`
-    local state, err = pcall(function()
-        return makefolder(_path)
-    end)
-
-    local banned_ancestors = getgenv()._extract_blacklist_ancestor or {}
-    local classes_only = getgenv()._extract_only_class or {}
-
-	local stamp = os.clock()
-
-    for _, obj in container:GetChildren() do
-        if getgenv()._extract_stop then break end
-        local state_break = false
-
-        for _, banned_ancestor in banned_ancestors do
-            if obj:FindFirstAncestor(banned_ancestor.Name) then -- obj:IsA("LocalScript") or obj:IsA("ModuleScript"))
-                state_break = true
-            end
-        end
-
-        if not state_break then -- 
-			if #classes_only > 0 and not table.find(classes_only, obj.ClassName) then continue end
-
-            save_script(obj, _path)
-			
-            if descendant and #obj:GetChildren() > 0 then
-				if #classes_only > 0 and (not find_descendant_of_class(obj, getgenv()._extract_only_class)) then continue end
-            	save_container_scripts(obj, getgenv()._extract_descendants)
-			end
-        end
-    end
-
-	if origin_container.Name == container.Name and origin_container.ClassName == container.ClassName and #origin_container:GetChildren() == #container:GetChildren() then 
-		print("----- SNATCHED TARGET -----")
-    	print(`done snatched ts target cuh, they from da {origin_container.Parent.Name} and they is {origin_container.Name}`)
-		print(`ts lowkey taking me some {os.clock() - stamp}s`)
-    	print("----- SNATCHED TARGET -----")
+		return Tries, Decompiled
 	end
 end
 
-local _path = getgenv()._extract_path
-local _descendants = getgenv()._extract_descendants
-local _debug = getgenv()._extract_debug
-local _blacklist = getgenv()._extract_blacklist_ancestor
-local _classes = getgenv()._extract_only_class
-local _force_stop = getgenv()._extract_stop
-save_container_scripts(_path, _descendants)
+function GetParentPath(Object : Instance, InitialParent : Instance)
+	local CurrentParent = Object
+	local PathArray = {}
+	local Path = ""
+
+	repeat
+		table.insert(PathArray, CurrentParent.Name)
+		CurrentParent = CurrentParent.Parent
+	until CurrentParent == InitialParent or CurrentParent == game
+
+	for Index = #PathArray, 1, -1 do
+		Path = `{Path}{Path == "" and "" or "/"}{PathArray[Index]}`
+	end
+
+	return Path
+end
+
+function SaveObject(Object : Instance, CurrentPath : Instance, Folder : boolean, ForceName : string)
+	if Folder or Object:IsA("Folder") then
+		local FolderPath = `{CurrentPath}/{ForceName or `{Object.Name} {Object.ClassName}`}`
+		makefolder(FolderPath)
+
+		return FolderPath
+	elseif Object:IsA("ModuleScript") or Object:IsA("LocalScript") then
+		local Stamp = os.clock()
+		local Tries, Decompiled = SafeDecompile(Object)
+
+		local DecompiledName = RemoveSymbols(`{Tries or "FAILED"} {Object.Name} {Object.ClassName}.txt`)
+
+		if getgenv()._extract_debug then 
+			print("------------ SNATCHED -----------------")
+			print(`NAME : {DecompiledName}`)
+			print(`PATH : {Object:GetFullName()}`)
+			print("------------ SNATCHED -----------------")
+		end
+
+		local State, _ = pcall(function()
+			return writefile(`{CurrentPath}/{DecompiledName}`, Decompiled)
+		end)
+
+		if State and getgenv()._extract_debug then
+			print(`snatched {Object.Name} at {os.clock() - Stamp}s in {Tries} tries`)
+		elseif not State or getgenv()._extract_debug then
+			print(`{Object.Name} ranaway cuh`)
+		end
+	else
+		writefile(`{CurrentPath}/{Object.Name} {Object.ClassName}`, "")
+	end
+end
+
+local OriginalContainer
+
+local OngoingSnatching = 0
+local CompletedSnatch = 0
+
+function SaveContainerObjects(Container : Instance, PreviousPath : string)
+	if getgenv()._extract_stop then
+		print("snatching stopped")
+		return
+	end
+
+	if not Container then
+		print("i see no target")
+		return
+	end
+
+	local BannedAncestors = getgenv()._extract_blacklist_ancestor or {}
+	local BannedState = false
+
+	if #BannedAncestors > 0 then
+		for _, Ancestor in BannedAncestors do
+			if Container:FindFirstAncestor(Ancestor) then
+				BannedState = true
+				break
+			end
+		end
+	end
+
+	if BannedState then
+		return
+	end
+	
+	local StartStamp = os.clock()
+	local IsOriginalContainer = OriginalContainer == nil
+	OriginalContainer = OriginalContainer or Container
+
+	local CurrentPath = PreviousPath or `{SavePath}`
+	CurrentPath = SaveObject(Container, CurrentPath, true, IsOriginalContainer and RemoveSymbols(Container:GetFullName()))
+	
+	if IsOriginalContainer then
+		print("----- --- -- Cheeus Snatcher -- --- -----")
+		print("Cheeus is eyeing at {Container.Name}!")
+		print(`Beware {Container:GetFullName()}, Cheeus is coming!`)
+		print("----- --- -- Cheeus Snatcher -- --- -----")
+	end
+	
+	for _, Object in Container:GetChildren() do
+		if getgenv()._extract_stop then
+			break
+		end
+
+		SaveObject(Object, CurrentPath)
+		if Object:IsA("ModuleScript") or Object:IsA("LocalScript") then
+			OngoingSnatching += 1
+			CompletedSnatch += 1
+		end
+
+		if #Object:GetChildren() > 0 then
+			task.spawn(function()
+				SaveContainerObjects(Object, CurrentPath)
+			end)
+		end
+
+		task.wait()
+	end
+	
+	if IsOriginalContainer then
+		local Stamp = os.clock()
+		
+		while task.wait() do
+			if os.clock() - Stamp >= 60 then
+				print("----- --- -- Cheeus Snatcher -- --- -----")
+				print("This shit lowkey took longer than 60s")
+				print("I'm leavin bruh, i'm not gonna wait forever")
+				print("Just the tracker tho, not the real snatch, I'm still keepin my eyes on them")
+				print("----- --- -- Cheeus Snatcher -- --- -----")
+				
+				break
+			end
+			
+			if CompletedSnatch >= OngoingSnatching then
+				print("----- --- -- Cheeus Snatcher -- --- -----")
+				print("Cheeus succesfully snatched the target!")
+				print(`Snatched {Container.Name} with full Id of {Container:GetFullName()}`)
+				print(`Stored in {CurrentPath}`)
+				print(`{Cache.HighestDecompileTries <= 1 and "I see no challenge on snatching these targets, the Highest Tries is" or "Got some problems while snatching these targets, I got some with"} {Cache.HighestDecompileTries} Tries which is when i tryna to snatch {Cache.HighestDecomplieScript}`)
+				print(`I only took {os.clock() - StartStamp}s to snatch these targets`)
+				print("----- --- -- Cheeus Snatcher -- --- -----")
+				
+				break
+			end
+		end
+	end
+end
+
+local ExtractObject = getgenv()._extract_path
+local ExtractDebug = getgenv()._extract_debug
+local ExtractAncestorBlacklist = getgenv()._extract_blacklist_ancestor
+local ExtractForceStop = getgenv()._extract_stop
+
+SaveContainerObjects(ExtractObject)
