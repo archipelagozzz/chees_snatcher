@@ -34,7 +34,7 @@ function SafeDecompile(DecompileScript : LocalScript | ModuleScript, MaxTries : 
 		end)
 
 		local IsFailed = IsDecompileFailed(Decompiled)
-		if getgenv()._extract_debug then 
+		if getgenv().ExtractDebug then 
 			print(`CURRENT STATE : {IsFailed} | DECOMPILING {DecompileScript.Name} TRIES TAKEN : {Tries}`) 
 		end
 
@@ -81,7 +81,7 @@ function SaveObject(Object : Instance, CurrentPath : Instance, Folder : boolean,
 
 		local DecompiledName = RemoveSymbols(`{Tries or "FAILED"} {Object.Name} {Object.ClassName}.txt`)
 
-		if getgenv()._extract_debug then 
+		if getgenv().ExtractDebug then 
 			print("------------ SNATCHED -----------------")
 			print(`NAME : {DecompiledName}`)
 			print(`PATH : {Object:GetFullName()}`)
@@ -92,9 +92,9 @@ function SaveObject(Object : Instance, CurrentPath : Instance, Folder : boolean,
 			return writefile(`{CurrentPath}/{DecompiledName}`, Decompiled)
 		end)
 
-		if State and getgenv()._extract_debug then
+		if State and getgenv().ExtractDebug then
 			print(`snatched {Object.Name} at {os.clock() - Stamp}s in {Tries} tries`)
-		elseif not State or getgenv()._extract_debug then
+		elseif not State or getgenv().ExtractDebug then
 			print(`{Object.Name} ranaway cuh`)
 		end
 	else
@@ -108,7 +108,7 @@ local OngoingSnatching = 0
 local CompletedSnatch = 0
 
 function SaveContainerObjects(Container : Instance, PreviousPath : string)
-	if getgenv()._extract_stop then
+	if getgenv().ExtractForceStop then
 		print("snatching stopped")
 		return
 	end
@@ -118,11 +118,11 @@ function SaveContainerObjects(Container : Instance, PreviousPath : string)
 		return
 	end
 
-	local BannedAncestors = getgenv()._extract_blacklist_ancestor or {}
+	local ExcludedAncestors = getgenv().ExtractAncestorExclude or {}
 	local BannedState = false
 
-	if #BannedAncestors > 0 then
-		for _, Ancestor in BannedAncestors do
+	if #ExcludedAncestors > 0 then
+		for _, Ancestor in ExcludedAncestors do
 			if Container:FindFirstAncestor(Ancestor) then
 				BannedState = true
 				break
@@ -149,7 +149,7 @@ function SaveContainerObjects(Container : Instance, PreviousPath : string)
 	end
 	
 	for _, Object in Container:GetChildren() do
-		if getgenv()._extract_stop then
+		if getgenv().ExtractForceStop then
 			break
 		end
 
@@ -197,9 +197,9 @@ function SaveContainerObjects(Container : Instance, PreviousPath : string)
 	end
 end
 
-local ExtractObject = getgenv()._extract_path
-local ExtractDebug = getgenv()._extract_debug
-local ExtractAncestorBlacklist = getgenv()._extract_blacklist_ancestor
-local ExtractForceStop = getgenv()._extract_stop
+local ExtractObject = getgenv().ExtractObject
+local ExtractDebug = getgenv().ExtractDebug
+local ExtractAncestorExclude = getgenv().ExtractAncestorExclude
+local ExtractForceStop = getgenv().ExtractForceStop
 
 SaveContainerObjects(ExtractObject)
